@@ -234,11 +234,11 @@ def upload(archive, file, name, user, obj, dashboard_uri):
     if archive:
         file = archive.open(name)
 
-    # Slice to first (Header) row
-    for row in file:
-        row = row.decode()
-        if row.startswith('# rsid'):
-            break
+    # # Slice to first (Header) row
+    # for row in file:
+    #     row = row.decode()
+    #     if row.startswith('# rsid'):
+    #         break
 
     df = pd.read_csv(file, header=0, delimiter="\t", dtype={"# rsid": str, "chromosome": str, "position": str,
                                                             "genotype": str})  # combine the upload with adding headers to speed it up
