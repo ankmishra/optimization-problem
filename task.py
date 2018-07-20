@@ -305,7 +305,7 @@ def process_genome_file(user_id, dashboard_uri, file_pk, is_rescan=False):
         original_file = file[:-13]
         if os.path.isfile(file):
             os.remove(file)
-        if os.path.isfile(file):
+        if os.path.isfile(original_file):
             os.remove(original_file)
 
     except Exception:
