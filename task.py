@@ -208,18 +208,10 @@ def process_rsid_file(df, obj):
         genotype = item[3]
         snp = Snp.objects.filter(rsid=rsid).first()
         if snp is not None:
-            user_rsid = UserRsid.objects.filter(file=obj, rsid=rsid).first()
-            if not user_rsid:
-                UserRsid.objects.create(
-                    rsid=rsid,
-                    genotype=genotype,
-                    file=obj,
-                    genotype_style=check_genotype_style(genotype, snp)
-                )
-            else:
-                user_rsid.genotype_style = check_genotype_style(genotype, snp)
-                user_rsid.genotype = genotype
-                user_rsid.save()
+            user_rsid, created = UserRsid.objects.get_or_create(file=obj, rsid=rsid)
+            user_rsid.genotype_style = check_genotype_style(genotype, snp)
+            user_rsid.genotype = genotype
+            user_rsid.save()
         # Updates the file processing progress
         obj.update_progress()
 
