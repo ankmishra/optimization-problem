@@ -279,6 +279,8 @@ def process_genome_file(user_id, dashboard_uri, file_pk, is_rescan=False):
     if not result:
         return
     archive, file, name, user, obj = result
+    # file can either be a string or a file object
+    # So either of file.readline().decode() or file[:-13] must be removed.
     try:
         if obj.service == File.SERVICE_UNKNOWN:
             line = file.readline().decode()
