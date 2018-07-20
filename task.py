@@ -10,16 +10,19 @@ import os
 
 def check_genotype_style(genotype, snp):
     genotype = genotype.strip()
-    if len(genotype) > 1 and genotype[0] != genotype[1]:
-        return "heterozygous"
-    elif len(genotype) > 1 and (genotype[0] == genotype[1]) and genotype[0] == snp.minor_allele:
-        return "homozygous_minor"
-    elif len(genotype) > 1 and (genotype[0] == genotype[1]) and genotype[0] != snp.minor_allele:
-        return "homozygous_major"
-    elif len(genotype) == 1 and genotype[0] != snp.minor_allele:
-        return "hemizygous_major"
-    elif len(genotype) == 1 and genotype[0] == snp.minor_allele:
-        return "hemizygous_minor"
+    if len(genotype) > 1:
+        if genotype[0] != genotype[1]:
+            return "heterozygous"
+        elif genotype[0] == genotype[1]:
+            if genotype[0] == snp.minor_allele:
+                return "homozygous_minor"
+            else:
+                return "homozygous_major"
+    elif len(genotype) == 1:
+        if genotype[0] != snp.minor_allele:
+            return "hemizygous_major"
+        else:
+            return "hemizygous_minor"
     elif genotype == 'II':
         return "double_insertion"
     elif genotype == 'DD':
