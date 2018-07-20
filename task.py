@@ -10,16 +10,15 @@ import os
 
 def check_genotype_style(genotype, snp):
     genotype = genotype.strip()
-    if len(genotype) > 1:
-        if  genotype[0] != genotype[1]:
-            return "heterozygous"
-        elif  genotype[0] == genotype[1] and genotype[0] == snp.minor_allele:
-            return "homozygous_minor"
-        elif  genotype[0] == genotype[1] and genotype[0] != snp.minor_allele:
-            return "homozygous_major"
-        elif  genotype[0] != snp.minor_allele:
-            return "hemizygous_major"
-        elif genotype[0] == snp.minor_allele:
+    if len(genotype) > 1 and genotype[0] != genotype[1]:
+        return "heterozygous"
+    elif len(genotype) > 1 and (genotype[0] == genotype[1]) and genotype[0] == snp.minor_allele:
+        return "homozygous_minor"
+    elif len(genotype) > 1 and (genotype[0] == genotype[1]) and genotype[0] != snp.minor_allele:
+        return "homozygous_major"
+    elif len(genotype) == 1 and genotype[0] != snp.minor_allele:
+        return "hemizygous_major"
+    elif len(genotype) == 1 and genotype[0] == snp.minor_allele:
         return "hemizygous_minor"
     elif genotype == 'II':
         return "double_insertion"
@@ -206,10 +205,18 @@ def process_rsid_file(df, obj):
         genotype = item[3]
         snp = Snp.objects.filter(rsid=rsid).first()
         if snp is not None:
-            user_rsid,created = UserRsid.objects.get_or_create(file=obj, rsid=rsid)
-            user_rsid.genotype_style = check_genotype_style(genotype, snp)
-            user_rsid.genotype = genotype
-            user_rsid.save()
+            user_rsid = UserRsid.objects.filter(file=obj, rsid=rsid).first()
+            if not user_rsid:
+                UserRsid.objects.create(
+                    rsid=rsid,
+                    genotype=genotype,
+                    file=obj,
+                    genotype_style=check_genotype_style(genotype, snp)
+                )
+            else:
+                user_rsid.genotype_style = check_genotype_style(genotype, snp)
+                user_rsid.genotype = genotype
+                user_rsid.save()
         # Updates the file processing progress
         obj.update_progress()
 
@@ -226,13 +233,15 @@ def upload(archive, file, name, user, obj, dashboard_uri):
     if archive:
         file = archive.open(name)
 
-    # # Slice to first (Header) row
-    # for row in file:
-    #     row = row.decode()
-    #     if row.startswith('# rsid'):
-    #         break
+    # Slice to first (Header) row
+    for row in file:
+        row = row.decode()
+        if row.startswith('# rsid'):
+            break
 
-    df = data_frame_data(file)
+    df = pd.read_csv(file, header=0, delimiter="\t", dtype={"# rsid": str, "chromosome": str, "position": str,
+                                                            "genotype": str})  # combine the upload with adding headers to speed it up
+
     df.columns = ["rsid", "chromosome", "position", "genotype"]
 
     process_rsid_file(df, obj)
@@ -246,7 +255,10 @@ def upload_ancestry(archive, file, name, user, obj, dashboard_uri):
     try:
         print('tasks.upload_ancestry Start processing file %s' % name)
 
-        df = data_frame_data(file)
+        df = pd.read_csv(file, header=0, comment='#', delimiter="\t",
+                         dtype={"rsid": str, "chromosome": str, "position": str, "allele1": str,
+                                "allele2": str})  # combine the upload with adding headers to speed it up
+
         df["genotype"] = df["allele1"] + df["allele2"]
         df = df[["rsid", "chromosome", "position", "genotype"]]
 
@@ -257,18 +269,6 @@ def upload_ancestry(archive, file, name, user, obj, dashboard_uri):
         print('tasks.upload_ancestry Finished processing file %s' % name)
     except Exception:
         utils.handle_errors(obj)
-
-data_frame=None
-def data_frame_data(file):
-    global data_frame
-    try:
-        if data_frame is None:
-            data_frame = pd.read_csv(file, header=0, comment='#', delimiter="\t",
-                             dtype={"rsid": str, "chromosome": str, "position": str, "allele1": str,
-                                    "allele2": str})  # combine the upload with adding headers to speed it up
-        return data_frame
-    except Exception as e:
-        return "csv can not readable by pandas"
 
 
 @app.task
@@ -302,6 +302,7 @@ def process_genome_file(user_id, dashboard_uri, file_pk, is_rescan=False):
         original_file = file[:-13]
         if os.path.isfile(file):
             os.remove(file)
+        if os.path.isfile(file):
             os.remove(original_file)
 
     except Exception:
